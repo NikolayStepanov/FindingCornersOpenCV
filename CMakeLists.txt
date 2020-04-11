@@ -31,14 +31,12 @@ if(ANDROID)
     main.cpp
     mainwindow.cpp
     mainwindow.h
-    mainwindow.ui
   )
 else()
   add_executable(ImageProcessing
     main.cpp
     mainwindow.cpp
     mainwindow.h
-    mainwindow.ui
   )
 endif()
 
