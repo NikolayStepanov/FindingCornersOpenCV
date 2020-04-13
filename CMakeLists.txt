@@ -14,18 +14,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 find_package(OpenCV REQUIRED)
 
-if(ANDROID)
-  add_library(ImageProcessing SHARED
+set ( SOURCES
     main.cpp
     mainwindow.cpp
+    ImgEffectsWorkerThread.cpp
+    )
+
+set ( HEADERS
     mainwindow.h
-  )
-else()
-  add_executable(ImageProcessing
-    main.cpp
-    mainwindow.cpp
-    mainwindow.h
-  )
-endif()
+    ImgConverterQTvsOpenCV.h
+    ImgEffectsWorkerThread.h
+    )
+
+add_executable(ImageProcessing  ${SOURCES} ${HEADERS})
 
 target_link_libraries(ImageProcessing PRIVATE Qt5::Widgets ${OpenCV_LIBS})

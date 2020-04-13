@@ -16,24 +16,31 @@
 #include <QScrollBar>
 #include <QStandardPaths>
 #include <QStatusBar>
+#include <QCloseEvent>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
-      imageLabel(new QLabel),
-      scrollArea(new QScrollArea)
+      m_ImageLabel(new QLabel),
+      m_ScrollArea(new QScrollArea)
 {
-    scrollArea->setBackgroundRole(QPalette::Dark);
-    scrollArea->setWidget(imageLabel);
-    scrollArea->setVisible(false);
-    setCentralWidget(scrollArea);
+    m_ScrollArea->setBackgroundRole(QPalette::Dark);
+    m_ScrollArea->setWidget(m_ImageLabel);
+    m_ScrollArea->setVisible(false);
+    setCentralWidget(m_ScrollArea);
 
     resize(QGuiApplication::primaryScreen()->availableSize() * 1/2);
 
     createActions();
+
+    m_pThreadWork =new ImgEffectsWorkerThread();
+
+    connect(m_pThreadWork, SIGNAL(started()),this , SLOT(onThreadStarted()));
+    connect(m_pThreadWork, SIGNAL(finished()),this , SLOT(onThreadFinished()));
 }
 
 MainWindow::~MainWindow()
 {
+
 }
 
 bool MainWindow::loadFile(const QString & fileName)
@@ -52,9 +59,15 @@ bool MainWindow::loadFile(const QString & fileName)
     setWindowFilePath(fileName);
 
     const QString message = tr("Opened \"%1\", %2x%3, Depth: %4")
-            .arg(QDir::toNativeSeparators(fileName)).arg(image.width()).arg(image.height()).arg(image.depth());
+            .arg(QDir::toNativeSeparators(fileName)).arg(m_Image.width()).arg(m_Image.height()).arg(m_Image.depth());
     statusBar()->showMessage(message);
     return true;
+}
+
+void MainWindow::closeEvent(QCloseEvent *pEvent)
+{
+    pEvent->accept();
+    m_pThreadWork->stop();
 }
 
 static void initializeImageFileDialog(QFileDialog &dialog, QFileDialog::AcceptMode acceptMode)
@@ -103,20 +116,51 @@ void MainWindow::about()
                           "Выделить все найденные углы небольшими окружностями в исходном изображении."));
 }
 
+void MainWindow::searchCorners()
+{
+    m_pThreadWork->startCornerSearch(m_Image);
+}
+
+void MainWindow::onThreadStarted()
+{
+    m_EditMenu->setEnabled(false);
+    m_SaveAsAct->setEnabled(false);
+    m_OpenAct->setEnabled(false);
+}
+
+void MainWindow::onThreadFinished()
+{
+    const QImage *pcImage =m_pThreadWork->getResultImage();
+
+    if(pcImage)
+    {
+        m_Image = *pcImage;
+        m_ImageLabel->setPixmap(QPixmap::fromImage(m_Image));
+    }
+
+    m_EditMenu->setEnabled(true);
+    m_SaveAsAct->setEnabled(true);
+    m_OpenAct->setEnabled(true);
+}
+
 void MainWindow::createActions()
 {
     QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
 
-    QAction *openAct = fileMenu->addAction(tr("&Open..."), this, &MainWindow::open);
-    openAct->setShortcut(QKeySequence::Open);
+    m_OpenAct = fileMenu->addAction(tr("&Open..."), this, &MainWindow::open);
+    m_OpenAct->setShortcut(QKeySequence::Open);
 
-    saveAsAct = fileMenu->addAction(tr("&Save As..."), this, &MainWindow::saveAs);
-    saveAsAct->setEnabled(false);
+    m_SaveAsAct = fileMenu->addAction(tr("&Save As..."), this, &MainWindow::saveAs);
+    m_SaveAsAct->setEnabled(false);
 
-    QAction *exitAct = fileMenu->addAction(tr("E&xit"), this, &QWidget::close);
+    QAction *exitAct = fileMenu->addAction(tr("&Exit"), this, &QWidget::close);
     exitAct->setShortcut(tr("Ctrl+Q"));
 
-    QMenu *editMenu = menuBar()->addMenu(tr("&Edit"));
+    m_EditMenu = menuBar()->addMenu(tr("&Edit"));
+
+    m_SearchCorners = m_EditMenu->addAction(tr("&Search Сorners"), this, &MainWindow::searchCorners);
+    m_SearchCorners->setShortcut(tr("Ctrl+R"));
+    m_SearchCorners->setEnabled(false);
 
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
 
@@ -125,27 +169,29 @@ void MainWindow::createActions()
 
 void MainWindow::setImage(const QImage &newImage)
 {
-    image = newImage;
-    if (image.colorSpace().isValid())
-        image.convertToColorSpace(QColorSpace::SRgb);
-    imageLabel->setPixmap(QPixmap::fromImage(image));
+    m_Image = newImage;
+    if (m_Image.colorSpace().isValid())
+        m_Image.convertToColorSpace(QColorSpace::SRgb);
+    m_ImageLabel->setPixmap(QPixmap::fromImage(m_Image));
 
-    scrollArea->setVisible(true);
+    m_ScrollArea->setVisible(true);
     updateActions();
 
-    imageLabel->adjustSize();
+    m_ImageLabel->adjustSize();
 }
 
 void MainWindow::updateActions()
 {
-    saveAsAct->setEnabled(!image.isNull());
+    m_SaveAsAct->setEnabled(!m_Image.isNull());
+    m_SearchCorners->setEnabled(!m_Image.isNull());
+
 }
 
 bool MainWindow::saveFile(const QString &fileName)
 {
     QImageWriter writer(fileName);
 
-    if (!writer.write(image)) {
+    if (!writer.write(m_Image)) {
         QMessageBox::information(this, QGuiApplication::applicationDisplayName(),
                                  tr("Cannot write %1: %2")
                                  .arg(QDir::toNativeSeparators(fileName)), writer.errorString());
