@@ -1,34 +1,24 @@
 #ifndef IMGEFFECTSWORKERTHREAD_H
 #define IMGEFFECTSWORKERTHREAD_H
 
-#include <ImgConverterQTvsOpenCV.h>
-#include <QThread>
+#include <QObject>
 
-using namespace ImgConQTOpenCV;
-
-class ImgEffectsWorkerThread: public QThread
+class ImgEffectsWorkerThread: public QObject
 {
     Q_OBJECT
 public:
-    explicit ImgEffectsWorkerThread();
+    explicit ImgEffectsWorkerThread(const QImage image);
     ~ImgEffectsWorkerThread();
 
-public:
-    const QImage *getResultImage() const;
-    void startCornerSearch(const QImage &rcImage);
-    void stop();
+signals:
+    void finished();
+    void resultImage(QImage m_ptrResul);
+
+public slots:
+    void doWork();
+    void stopWork();
 
 private:
-    virtual void run();
-    void mSearchCorners();
-
-private:
-    enum Operation
-    {
-        SearchCorners
-    };
-
-    Operation m_nOperation;
     QScopedPointer <QImage> m_ptrInput, m_ptrResult;
 
 };

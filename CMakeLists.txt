@@ -18,12 +18,14 @@ set ( SOURCES
     main.cpp
     mainwindow.cpp
     ImgEffectsWorkerThread.cpp
+    ImgEffectsManager.cpp
     )
 
 set ( HEADERS
     mainwindow.h
     ImgConverterQTvsOpenCV.h
     ImgEffectsWorkerThread.h
+    ImgEffectsManager.h
     )
 
 add_executable(ImageProcessing  ${SOURCES} ${HEADERS})

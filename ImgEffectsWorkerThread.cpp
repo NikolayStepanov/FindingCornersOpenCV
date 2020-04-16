@@ -1,14 +1,15 @@
 #include "ImgEffectsWorkerThread.h"
-
+#include <ImgConverterQTvsOpenCV.h>
 #include <vector>
 
 using namespace std;
+using namespace ImgConQTOpenCV;
 
-ImgEffectsWorkerThread::ImgEffectsWorkerThread()
-    :m_nOperation(SearchCorners),
-      m_ptrInput(nullptr),
+ImgEffectsWorkerThread::ImgEffectsWorkerThread(const QImage image)
+    : m_ptrInput(new QImage(image)),
       m_ptrResult(nullptr)
 {
+
 }
 
 ImgEffectsWorkerThread::~ImgEffectsWorkerThread()
@@ -16,47 +17,7 @@ ImgEffectsWorkerThread::~ImgEffectsWorkerThread()
 
 }
 
-const QImage *ImgEffectsWorkerThread::getResultImage() const
-{
-    assert(isFinished());
-
-    return m_ptrResult.data();
-}
-
-void ImgEffectsWorkerThread::startCornerSearch(const QImage &rcImage)
-{
-    if (isRunning())
-        return;
-
-    m_nOperation = SearchCorners;
-
-    m_ptrInput.reset(new QImage(rcImage));
-
-    QThread::start();
-}
-
-void ImgEffectsWorkerThread::stop()
-{
-    requestInterruption();
-}
-
-void ImgEffectsWorkerThread::run()
-{
-    sleep(10);
-    switch (m_nOperation)
-    {
-    case SearchCorners:
-        mSearchCorners();
-        break;
-    }
-    if (isInterruptionRequested())
-    {
-        m_ptrResult.reset();
-        return;
-    }
-}
-
-void ImgEffectsWorkerThread::mSearchCorners()
+void ImgEffectsWorkerThread::doWork()
 {
     if (m_ptrInput)
     {
@@ -107,7 +68,13 @@ void ImgEffectsWorkerThread::mSearchCorners()
                 circle(image, center[i], (int)radius[i]+4, color, 2, 8, 0 );
             }
         }
-
         *m_ptrResult = ImgConQTOpenCV::MatToQImage(image);
+        emit resultImage(*m_ptrResult.data());
     }
+    emit finished();
+}
+
+void ImgEffectsWorkerThread::stopWork()
+{
+    emit finished();
 }

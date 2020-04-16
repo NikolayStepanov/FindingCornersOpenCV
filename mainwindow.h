@@ -5,18 +5,7 @@
 #include <QLabel>
 #include <QScrollArea>
 
-#include <ImgEffectsWorkerThread.h>
-
-QT_BEGIN_NAMESPACE
-namespace Ui {
-class MainWindow;
-class QAction;
-class QLabel;
-class QMenu;
-class QScrollArea;
-class QScrollBar;
-}
-QT_END_NAMESPACE
+#include "ImgEffectsManager.h"
 
 class MainWindow : public QMainWindow
 {
@@ -35,9 +24,7 @@ private slots:
     void saveAs();
     void about();
     void searchCorners();
-
-    void onThreadStarted();
-    void onThreadFinished();
+    void onRefreshImage();
 
 private:
     void createActions();
@@ -50,12 +37,13 @@ private:
     QImage m_Image;
 
     QLabel* m_ImageLabel;
+
     QScrollArea* m_ScrollArea;
     QAction* m_SaveAsAct;
     QAction* m_OpenAct;
     QAction* m_SearchCorners;
     QMenu* m_EditMenu;
 
-    ImgEffectsWorkerThread * m_pThreadWork;
+    ImgEffectsManager * m_Manager;
 };
 #endif // MAINWINDOW_H

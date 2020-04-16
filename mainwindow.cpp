@@ -21,7 +21,8 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       m_ImageLabel(new QLabel),
-      m_ScrollArea(new QScrollArea)
+      m_ScrollArea(new QScrollArea),
+      m_Manager(new ImgEffectsManager(this))
 {
     m_ScrollArea->setBackgroundRole(QPalette::Dark);
     m_ScrollArea->setWidget(m_ImageLabel);
@@ -32,10 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     createActions();
 
-    m_pThreadWork =new ImgEffectsWorkerThread();
-
-    connect(m_pThreadWork, SIGNAL(started()),this , SLOT(onThreadStarted()));
-    connect(m_pThreadWork, SIGNAL(finished()),this , SLOT(onThreadFinished()));
+    connect(m_Manager,SIGNAL(refreshImage()),SLOT(onRefreshImage()));
 }
 
 MainWindow::~MainWindow()
@@ -67,7 +65,6 @@ bool MainWindow::loadFile(const QString & fileName)
 void MainWindow::closeEvent(QCloseEvent *pEvent)
 {
     pEvent->accept();
-    m_pThreadWork->stop();
 }
 
 static void initializeImageFileDialog(QFileDialog &dialog, QFileDialog::AcceptMode acceptMode)
@@ -111,32 +108,24 @@ void MainWindow::saveAs()
 void MainWindow::about()
 {
     QMessageBox::about(this, tr("About Image Processing"),
-                       tr("Найти все углы в изображении, используя функцию "
-                          "preCornerDetect(), преобразовав предварительно цветность изображения к оттенкам серого."
-                          "Выделить все найденные углы небольшими окружностями в исходном изображении."));
+                       tr("Find all angles in the image using the function"
+                          "preCornerDetect(), pre-color the image to shades of gray."
+                          "Select all found angles in small circles in the original image."));
 }
 
 void MainWindow::searchCorners()
 {
-    m_pThreadWork->startCornerSearch(m_Image);
-}
+    m_Manager->addEffectImg(m_Image);
 
-void MainWindow::onThreadStarted()
-{
     m_EditMenu->setEnabled(false);
     m_SaveAsAct->setEnabled(false);
     m_OpenAct->setEnabled(false);
 }
 
-void MainWindow::onThreadFinished()
+void MainWindow::onRefreshImage()
 {
-    const QImage *pcImage =m_pThreadWork->getResultImage();
-
-    if(pcImage)
-    {
-        m_Image = *pcImage;
-        m_ImageLabel->setPixmap(QPixmap::fromImage(m_Image));
-    }
+    m_Image=m_Manager->getResultImage();
+    m_ImageLabel->setPixmap(QPixmap::fromImage(m_Image));
 
     m_EditMenu->setEnabled(true);
     m_SaveAsAct->setEnabled(true);
@@ -184,7 +173,6 @@ void MainWindow::updateActions()
 {
     m_SaveAsAct->setEnabled(!m_Image.isNull());
     m_SearchCorners->setEnabled(!m_Image.isNull());
-
 }
 
 bool MainWindow::saveFile(const QString &fileName)
